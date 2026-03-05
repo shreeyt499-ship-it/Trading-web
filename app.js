@@ -4,6 +4,8 @@ const tradesTableBody = document.querySelector('#tradesTable tbody');
 
 let trades = JSON.parse(localStorage.getItem('trades') || '[]');
 let editingIndex = null;
+let monthlyChart;
+let cumulativeChart;
 
 // Save Trade
 tradeForm.addEventListener('submit', function(e) {
@@ -24,15 +26,7 @@ tradeForm.addEventListener('submit', function(e) {
 
   trade.points = trade.exitPrice - trade.entryPrice;
   trade.netPnL = trade.points * trade.quantity;
-  // Prepare cumulative P&L data
-let cumulativePnL = [];
-let sum = 0;
-trades.forEach(trade => {
-  sum += trade.net_pnl;
-  cumulativePnL.push(sum);
-});
 
-let tradeDates = trades.map(t => t.date);
   if (editingIndex !== null) {
     trades[editingIndex] = trade;
     editingIndex = null;
@@ -49,10 +43,10 @@ let tradeDates = trades.map(t => t.date);
 function renderTrades() {
   tradesTableBody.innerHTML = '';
   let wins = 0, totalProfit = 0;
+
   trades.forEach((trade, index) => {
     const pnlColor = trade.netPnL >= 0 ? 'green' : 'red';
     if (trade.netPnL > 0) wins++;
-
     totalProfit += trade.netPnL;
 
     const row = document.createElement('tr');
@@ -80,6 +74,7 @@ function renderTrades() {
   document.getElementById('winRate').innerText = trades.length ? Math.round((wins/trades.length)*100)+'%' : '0%';
 
   renderMonthlyChart();
+  renderCumulativeChart();
 }
 
 // Edit Trade
@@ -109,7 +104,6 @@ function deleteTrade(index) {
 }
 
 // Chart.js - Monthly P&L
-let monthlyChart;
 function renderMonthlyChart() {
   const ctx = document.getElementById('monthlyChart').getContext('2d');
   const monthly = {};
@@ -141,25 +135,39 @@ function renderMonthlyChart() {
   });
 }
 
-// Initial render
-renderTrades();
-const ctx = document.getElementById('cumulativeChart').getContext('2d');
-const cumulativeChart = new Chart(ctx, {
+// Chart.js - Cumulative P&L
+function renderCumulativeChart() {
+  const ctx = document.getElementById('cumulativeChart').getContext('2d');
+
+  let cumulativePnL = [];
+  let sum = 0;
+  let tradeDates = [];
+  trades.forEach(trade => {
+    sum += trade.netPnL;
+    cumulativePnL.push(sum);
+    tradeDates.push(trade.date);
+  });
+
+  if(cumulativeChart) cumulativeChart.destroy();
+
+  cumulativeChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: tradeDates,
-        datasets: [{
-            label: 'Cumulative P&L',
-            data: cumulativePnL,
-            fill: false,
-            borderColor: 'rgb(59, 130, 246)', // blue
-            tension: 0.1
-        }]
+      labels: tradeDates,
+      datasets: [{
+        label: 'Cumulative P&L',
+        data: cumulativePnL,
+        fill: false,
+        borderColor: 'rgb(59, 130, 246)',
+        tension: 0.1
+      }]
     },
     options: {
-        responsive: true,
-        scales: {
-            y: { beginAtZero: true }
-        }
+      responsive: true,
+      scales: { y: { beginAtZero: true } }
     }
-});
+  });
+}
+
+// Initial render
+renderTrades();
