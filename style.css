@@ -1,0 +1,93 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #F8FAFC;
+  color: #1F2937;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 960px;
+  margin: auto;
+  padding: 20px;
+}
+
+h1, h2 {
+  color: #1E40AF;
+}
+
+.form-section, .kpi-section, .trades-section, .charts-section {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+input, select, button {
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  font-size: 14px;
+}
+
+button {
+  background-color: #1E40AF;
+  color: #FFFFFF;
+  font-weight: bold;
+  margin-top: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.kpis {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.kpis div {
+  width: 48%;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+th, td {
+  border: 1px solid #E5E7EB;
+  padding: 8px;
+  text-align: center;
+}
+
+th {
+  background-color: #F3F4F6;
+}
+
+.mistakes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mistakes label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: normal;
+}
