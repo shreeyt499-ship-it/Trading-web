@@ -24,7 +24,15 @@ tradeForm.addEventListener('submit', function(e) {
 
   trade.points = trade.exitPrice - trade.entryPrice;
   trade.netPnL = trade.points * trade.quantity;
+  // Prepare cumulative P&L data
+let cumulativePnL = [];
+let sum = 0;
+trades.forEach(trade => {
+  sum += trade.net_pnl;
+  cumulativePnL.push(sum);
+});
 
+let tradeDates = trades.map(t => t.date);
   if (editingIndex !== null) {
     trades[editingIndex] = trade;
     editingIndex = null;
@@ -135,3 +143,23 @@ function renderMonthlyChart() {
 
 // Initial render
 renderTrades();
+const ctx = document.getElementById('cumulativeChart').getContext('2d');
+const cumulativeChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: tradeDates,
+        datasets: [{
+            label: 'Cumulative P&L',
+            data: cumulativePnL,
+            fill: false,
+            borderColor: 'rgb(59, 130, 246)', // blue
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
