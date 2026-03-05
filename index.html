@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F&O Trade Journal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <h1>Trade Journal</h1>
+
+    <!-- Add Trade Form -->
+    <div class="form-section">
+      <h2>Add / Edit Trade</h2>
+      <form id="trade-form">
+        <label>Date*</label>
+        <input type="date" id="date" required>
+
+        <label>Instrument*</label>
+        <select id="instrument">
+          <option value="NIFTY">NIFTY</option>
+          <option value="BANKNIFTY">BANKNIFTY</option>
+          <option value="STOCKS">STOCKS</option>
+        </select>
+
+        <label>Option Type*</label>
+        <select id="optionType">
+          <option value="CALL">CALL</option>
+          <option value="PUT">PUT</option>
+        </select>
+
+        <label>Entry Price*</label>
+        <input type="number" id="entryPrice" required step="0.01">
+
+        <label>Exit Price*</label>
+        <input type="number" id="exitPrice" required step="0.01">
+
+        <label>Quantity*</label>
+        <input type="number" id="quantity" required step="1">
+
+        <label>Strategy</label>
+        <select id="strategy">
+          <option value="Breakout">Breakout</option>
+          <option value="Support Resistance">Support Resistance</option>
+          <option value="Option Buy">Option Buy</option>
+          <option value="Option Sell">Option Sell</option>
+          <option value="Scalping">Scalping</option>
+        </select>
+
+        <label>Mistakes (Optional)</label>
+        <div class="mistakes">
+          <label><input type="checkbox" value="Overtrading"> Overtrading</label>
+          <label><input type="checkbox" value="FOMO"> FOMO</label>
+          <label><input type="checkbox" value="No SL"> No SL</label>
+          <label><input type="checkbox" value="Revenge trade"> Revenge trade</label>
+        </div>
+
+        <label>Reason</label>
+        <input type="text" id="reason">
+
+        <label>Remarks</label>
+        <input type="text" id="remarks">
+
+        <button type="submit" id="saveTradeBtn">Save Trade</button>
+      </form>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-section">
+      <h2>Statistics</h2>
+      <div class="kpis">
+        <div>Total Trades: <span id="totalTrades">0</span></div>
+        <div>Total P&L: ₹<span id="totalProfit">0</span></div>
+        <div>Win Rate: <span id="winRate">0%</span></div>
+        <div>Wins: <span id="wins">0</span></div>
+      </div>
+    </div>
+
+    <!-- Trades List -->
+    <div class="trades-section">
+      <h2>Recent Trades</h2>
+      <table id="tradesTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Instrument</th>
+            <th>Option</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>Qty</th>
+            <th>Points</th>
+            <th>P&L</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Charts placeholder (optional) -->
+    <div class="charts-section">
+      <h2>Analytics</h2>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
