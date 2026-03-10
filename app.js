@@ -170,7 +170,11 @@ async function migrateLocalTrades() {
         }
     }
 }
-
+// Add this at the top of renderCharts() function
+console.log("renderCharts called");
+console.log("trades length:", trades.length);
+console.log("equityChartEl:", equityChartEl);
+console.log("monthlyChartEl:", monthlyChartEl);
 // Render Charts - FIXED VERSION
 function renderCharts() {
     if (!trades.length) return;
