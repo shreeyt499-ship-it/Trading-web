@@ -141,33 +141,210 @@ function renderCumulativeChart() {
 
   let cumulativePnL = [];
   let sum = 0;
-  let tradeDates = [];
-  trades.forEach(trade => {
-    sum += trade.netPnL;
-    cumulativePnL.push(sum);
-    tradeDates.push(trade.date);
-  });
+let uid
+let trades=[]
+let editId=null
 
-  if(cumulativeChart) cumulativeChart.destroy();
+auth.onAuthStateChanged(user=>{
 
-  cumulativeChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: tradeDates,
-      datasets: [{
-        label: 'Cumulative P&L',
-        data: cumulativePnL,
-        fill: false,
-        borderColor: 'rgb(59, 130, 246)',
-        tension: 0.1
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: { y: { beginAtZero: true } }
-    }
-  });
+if(user){
+
+uid=user.uid
+document.getElementById("userEmail").innerText=user.email
+
+migrateLocalTrades()
+
+loadTrades()
+
+}else{
+
+window.location="index.html"
+
 }
 
-// Initial render
-renderTrades();
+})
+
+function showTab(tab){
+
+document.querySelectorAll(".tab").forEach(t=>t.style.display="none")
+document.getElementById(tab).style.display="block"
+
+}
+
+const form=document.getElementById("trade-form")
+
+form.addEventListener("submit",async e=>{
+
+e.preventDefault()
+
+const trade={
+
+date:date.value,
+instrument:instrument.value,
+optionType:optionType.value,
+entry:parseFloat(entryPrice.value),
+exit:parseFloat(exitPrice.value),
+qty:parseInt(quantity.value),
+strategy:strategy.value
+
+}
+
+trade.pnl=(trade.exit-trade.entry)*trade.qty
+
+if(editId){
+
+await db.collection("users").doc(uid).collection("trades").doc(editId).update(trade)
+
+editId=null
+
+}else{
+
+await db.collection("users").doc(uid).collection("trades").add(trade)
+
+}
+
+loadTrades()
+
+})
+
+async function loadTrades(){
+
+const snapshot=await db.collection("users").doc(uid).collection("trades").get()
+
+trades=[]
+
+snapshot.forEach(doc=>{
+
+trades.push({id:doc.id,...doc.data()})
+
+})
+
+renderTrades()
+
+renderCharts()
+
+}
+
+function renderTrades(){
+
+const tbody=document.querySelector("#tradesTable tbody")
+
+tbody.innerHTML=""
+
+trades.forEach(t=>{
+
+const row=document.createElement("tr")
+
+row.innerHTML=`
+
+<td>${t.date}</td>
+<td>${t.instrument}</td>
+<td>${t.optionType}</td>
+<td>${t.entry}</td>
+<td>${t.exit}</td>
+<td>${t.qty}</td>
+<td>${t.pnl}</td>
+
+<td><button onclick="editTrade('${t.id}')">Edit</button></td>
+
+<td><button onclick="deleteTrade('${t.id}')">X</button></td>
+
+`
+
+tbody.appendChild(row)
+
+})
+
+}
+
+function editTrade(id){
+
+const t=trades.find(x=>x.id===id)
+
+date.value=t.date
+instrument.value=t.instrument
+optionType.value=t.optionType
+entryPrice.value=t.entry
+exitPrice.value=t.exit
+quantity.value=t.qty
+strategy.value=t.strategy
+
+editId=id
+
+showTab("add")
+
+}
+
+async function deleteTrade(id){
+
+await db.collection("users").doc(uid).collection("trades").doc(id).delete()
+
+loadTrades()
+
+}
+
+function logout(){
+
+auth.signOut()
+
+}
+
+async function migrateLocalTrades(){
+
+const localTrades=JSON.parse(localStorage.getItem("trades")||"[]")
+
+if(localTrades.length>0 && !localStorage.getItem("migrated")){
+
+for(const t of localTrades){
+
+await db.collection("users").doc(uid).collection("trades").add(t)
+
+}
+
+localStorage.setItem("migrated","true")
+
+}
+
+}
+
+function renderCharts(){
+
+let cumulative=[]
+let sum=0
+
+let monthly={}
+let call=0
+let put=0
+let strategy={}
+let wins=0
+let losses=0
+
+trades.forEach(t=>{
+
+sum+=t.pnl
+cumulative.push(sum)
+
+const month=t.date.slice(0,7)
+monthly[month]=(monthly[month]||0)+t.pnl
+
+if(t.optionType==="CALL")call++
+else put++
+
+strategy[t.strategy]=(strategy[t.strategy]||0)+1
+
+if(t.pnl>0)wins++
+else losses++
+
+})
+
+new Chart(equityChart,{type:"line",data:{labels:trades.map(t=>t.date),datasets:[{data:cumulative,label:"Equity"}]}})
+
+new Chart(monthlyChart,{type:"bar",data:{labels:Object.keys(monthly),datasets:[{data:Object.values(monthly),label:"Monthly PnL"}]}})
+
+new Chart(callPutChart,{type:"pie",data:{labels:["CALL","PUT"],datasets:[{data:[call,put]}]}})
+
+new Chart(strategyChart,{type:"pie",data:{labels:Object.keys(strategy),datasets:[{data:Object.values(strategy)}]}})
+
+new Chart(winLossChart,{type:"pie",data:{labels:["Wins","Losses"],datasets:[{data:[wins,losses]}]}})
+
+}
