@@ -7,11 +7,16 @@ window.login = async function(){
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
+    if (!email || !password) {
+        alert("Please enter email and password");
+        return;
+    }
+
     try {
         await signInWithEmailAndPassword(auth, email, password);
         window.location = "dashboard.html";
     } catch(e){
-        alert(e.message);
+        alert("Login failed: " + e.message);
     }
 }
 
@@ -19,11 +24,16 @@ window.signup = async function(){
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
+    if (!email || !password) {
+        alert("Please enter email and password");
+        return;
+    }
+
     try {
         await createUserWithEmailAndPassword(auth, email, password);
         window.location = "dashboard.html";
     } catch(e){
-        alert(e.message);
+        alert("Signup failed: " + e.message);
     }
 }
 
@@ -33,6 +43,6 @@ window.loginWithGoogle = async function() {
         await signInWithPopup(auth, googleProvider);
         window.location = "dashboard.html";
     } catch(e) {
-        alert(e.message);
+        alert("Google login failed: " + e.message);
     }
 }
