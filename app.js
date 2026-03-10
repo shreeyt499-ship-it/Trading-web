@@ -1,29 +1,39 @@
-// Global
-let uid;
+import { auth, db } from "./firebase.js";
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Elements
+const tradeForm = document.getElementById("trade-form");
+const tradesTableBody = document.querySelector("#tradesTable tbody");
+let uid = null;
 let trades = [];
 let editId = null;
 
-// Auth check
-auth.onAuthStateChanged(async user => {
-    if(user){
-        uid = user.uid;
-        document.getElementById("userEmail").innerText = user.email;
+// Charts placeholders
+const equityChartEl = document.getElementById("equityChart");
+const monthlyChartEl = document.getElementById("monthlyChart");
+const callPutChartEl = document.getElementById("callPutChart");
+const strategyChartEl = document.getElementById("strategyChart");
+const winLossChartEl = document.getElementById("winLossChart");
+let equityChart, monthlyChart, callPutChart, strategyChart, winLossChart;
 
-        await migrateLocalTrades(); // migrate old localStorage trades once
-        await loadTrades();         // load all trades from Firestore
-    } else {
-        window.location = "index.html";
-    }
+// Auth state
+auth.onAuthStateChanged(async user => {
+    if (!user) return window.location = "index.html";
+    uid = user.uid;
+    document.getElementById("userEmail").innerText = user.email;
+
+    await migrateLocalTrades();
+    await loadTrades();
 });
 
-// Show tab function
-function showTab(tab){
-    document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
-    document.getElementById(tab).style.display="block";
+// Tabs
+function showTab(tab) {
+    document.querySelectorAll(".tab").forEach(t => t.style.display = "none");
+    document.getElementById(tab).style.display = "block";
 }
+window.showTab = showTab; // Make globally accessible
 
-// Add/Edit trade
-const tradeForm = document.getElementById("trade-form");
+// Save Trade
 tradeForm.addEventListener("submit", async e => {
     e.preventDefault();
 
@@ -35,43 +45,36 @@ tradeForm.addEventListener("submit", async e => {
         exit: parseFloat(document.getElementById("exitPrice").value),
         qty: parseInt(document.getElementById("quantity").value),
         strategy: document.getElementById("strategy").value,
-        pnl: (parseFloat(document.getElementById("exitPrice").value) -
-              parseFloat(document.getElementById("entryPrice").value)) *
-              parseInt(document.getElementById("quantity").value)
+        pnl: 0
     };
 
-    try {
-        if(editId){
-            await db.collection("users").doc(uid).collection("trades").doc(editId).update(trade);
-            editId = null;
-        } else {
-            await db.collection("users").doc(uid).collection("trades").add(trade);
-        }
+    trade.pnl = (trade.exit - trade.entry) * trade.qty;
 
-        tradeForm.reset();
-        await loadTrades();
-        showTab("trades");
-    } catch(err){
-        console.error(err);
-        alert("Error saving trade: " + err.message);
+    if (editId) {
+        await updateDoc(doc(db, "users", uid, "trades", editId), trade);
+        editId = null;
+    } else {
+        await addDoc(collection(db, "users", uid, "trades"), trade);
     }
+
+    tradeForm.reset();
+    await loadTrades();
+    showTab("home");
 });
 
-// Load trades from Firestore
-async function loadTrades(){
-    const snapshot = await db.collection("users").doc(uid).collection("trades").get();
+// Load Trades
+async function loadTrades() {
+    const snapshot = await getDocs(collection(db, "users", uid, "trades"));
     trades = [];
-    snapshot.forEach(doc => trades.push({id: doc.id, ...doc.data()}));
+    snapshot.forEach(docSnap => trades.push({ id: docSnap.id, ...docSnap.data() }));
 
-    renderTrades();
+    renderTradesTable();
     renderCharts();
 }
 
-// Render trades table
-function renderTrades(){
-    const tbody = document.querySelector("#tradesTable tbody");
-    tbody.innerHTML = "";
-
+// Render Trades Table
+function renderTradesTable() {
+    tradesTableBody.innerHTML = "";
     trades.forEach(t => {
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -81,16 +84,15 @@ function renderTrades(){
             <td>${t.entry}</td>
             <td>${t.exit}</td>
             <td>${t.qty}</td>
-            <td>${t.pnl}</td>
+            <td>${t.pnl.toFixed(2)}</td>
             <td><button onclick="editTrade('${t.id}')">Edit</button></td>
             <td><button onclick="deleteTrade('${t.id}')">X</button></td>
         `;
-        tbody.appendChild(row);
+        tradesTableBody.appendChild(row);
     });
 }
-
-// Edit trade
-function editTrade(id){
+window.editTrade = editTrade; // global
+async function editTrade(id) {
     const t = trades.find(x => x.id === id);
     document.getElementById("date").value = t.date;
     document.getElementById("instrument").value = t.instrument;
@@ -99,63 +101,81 @@ function editTrade(id){
     document.getElementById("exitPrice").value = t.exit;
     document.getElementById("quantity").value = t.qty;
     document.getElementById("strategy").value = t.strategy;
-
     editId = id;
     showTab("add");
 }
 
-// Delete trade
-async function deleteTrade(id){
-    await db.collection("users").doc(uid).collection("trades").doc(id).delete();
+// Delete Trade
+window.deleteTrade = async function(id) {
+    await deleteDoc(doc(db, "users", uid, "trades", id));
     await loadTrades();
-}
+};
 
 // Logout
-function logout(){
+window.logout = function() {
     auth.signOut();
-}
+};
 
-// Migrate old localStorage trades to Firestore
-async function migrateLocalTrades(){
+// Migrate localStorage trades
+async function migrateLocalTrades() {
     const localTrades = JSON.parse(localStorage.getItem("trades") || "[]");
-    if(localTrades.length > 0 && !localStorage.getItem("migrated")){
-        for(const t of localTrades){
-            await db.collection("users").doc(uid).collection("trades").add(t);
+    if (localTrades.length > 0 && !localStorage.getItem("migrated")) {
+        for (const t of localTrades) {
+            t.pnl = (t.exitPrice - t.entryPrice) * t.quantity;
+            await addDoc(collection(db, "users", uid, "trades"), t);
         }
-        localStorage.setItem("migrated","true");
+        localStorage.setItem("migrated", "true");
     }
 }
 
 // Render Charts
-function renderCharts(){
-    let cumulative=[], sum=0;
-    let monthly={}, call=0, put=0, strategy={}, wins=0, losses=0;
+function renderCharts() {
+    if (!trades.length) return;
 
-    trades.forEach(t=>{
+    let cumulative = [], sum = 0;
+    let monthly = {}, call = 0, put = 0, strategyCount = {}, wins = 0, losses = 0;
+
+    trades.forEach(t => {
         sum += t.pnl;
         cumulative.push(sum);
 
-        const month = t.date.slice(0,7);
+        const month = t.date.slice(0, 7);
         monthly[month] = (monthly[month] || 0) + t.pnl;
 
-        if(t.optionType === "CALL") call++;
-        else put++;
+        if (t.optionType === "CALL") call++; else put++;
 
-        strategy[t.strategy] = (strategy[t.strategy] || 0) + 1;
+        strategyCount[t.strategy] = (strategyCount[t.strategy] || 0) + 1;
 
-        if(t.pnl > 0) wins++;
-        else losses++;
+        if (t.pnl > 0) wins++; else losses++;
     });
 
-    // Charts
-    new Chart(document.getElementById("equityChart"), {type:"line", data:{labels: trades.map(t=>t.date), datasets:[{data:cumulative,label:"Equity"}]}});
+    if (equityChart) equityChart.destroy();
+    equityChart = new Chart(equityChartEl, {
+        type: "line",
+        data: { labels: trades.map(t => t.date), datasets: [{ data: cumulative, label: "Equity", borderColor: "lime", fill: false }] },
+    });
 
-    new Chart(document.getElementById("monthlyChart"), {type:"bar", data:{labels: Object.keys(monthly), datasets:[{data: Object.values(monthly), label:"Monthly PnL"}]}});
+    if (monthlyChart) monthlyChart.destroy();
+    monthlyChart = new Chart(monthlyChartEl, {
+        type: "bar",
+        data: { labels: Object.keys(monthly), datasets: [{ data: Object.values(monthly), label: "Monthly PnL", backgroundColor: "cyan" }] },
+    });
 
-    new Chart(document.getElementById("callPutChart"), {type:"pie", data:{labels:["CALL","PUT"], datasets:[{data:[call,put]}]}});
+    if (callPutChart) callPutChart.destroy();
+    callPutChart = new Chart(callPutChartEl, {
+        type: "pie",
+        data: { labels: ["CALL", "PUT"], datasets: [{ data: [call, put], backgroundColor: ["green", "red"] }] },
+    });
 
-    new Chart(document.getElementById("strategyChart"), {type:"pie", data:{labels: Object.keys(strategy), datasets:[{data:Object.values(strategy)}]}});
+    if (strategyChart) strategyChart.destroy();
+    strategyChart = new Chart(strategyChartEl, {
+        type: "pie",
+        data: { labels: Object.keys(strategyCount), datasets: [{ data: Object.values(strategyCount), backgroundColor: ["#38bdf8", "#facc15", "#f472b6", "#10b981", "#8b5cf6"] }] },
+    });
 
-    new Chart(document.getElementById("winLossChart"), {type:"pie", data:{labels:["Wins","Losses"], datasets:[{data:[wins, losses]}]}});
-
+    if (winLossChart) winLossChart.destroy();
+    winLossChart = new Chart(winLossChartEl, {
+        type: "pie",
+        data: { labels: ["Wins", "Losses"], datasets: [{ data: [wins, losses], backgroundColor: ["green", "red"] }] },
+    });
 }
