@@ -3,7 +3,7 @@
 <head>
   <title>Trading Dashboard</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm"></script>
+  <!-- Only module import for Chart.js -->
   <script type="module" src="firebase.js"></script>
   <script type="module" src="app.js"></script>
 </head>
@@ -20,21 +20,11 @@
 <div id="home" class="tab">
   <h2>Analytics</h2>
   <div class="charts-grid">
-    <div class="chart-container">
-      <canvas id="equityChart"></canvas>
-    </div>
-    <div class="chart-container">
-      <canvas id="monthlyChart"></canvas>
-    </div>
-    <div class="chart-container">
-      <canvas id="callPutChart"></canvas>
-    </div>
-    <div class="chart-container">
-      <canvas id="strategyChart"></canvas>
-    </div>
-    <div class="chart-container">
-      <canvas id="winLossChart"></canvas>
-    </div>
+    <div class="chart-container"><canvas id="equityChart"></canvas></div>
+    <div class="chart-container"><canvas id="monthlyChart"></canvas></div>
+    <div class="chart-container"><canvas id="callPutChart"></canvas></div>
+    <div class="chart-container"><canvas id="strategyChart"></canvas></div>
+    <div class="chart-container"><canvas id="winLossChart"></canvas></div>
   </div>
 </div>
 
