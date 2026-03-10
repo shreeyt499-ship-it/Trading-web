@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
   <title>Trading Dashboard</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
 </head>
 <body>
 
@@ -15,6 +16,7 @@
   <button onclick="showTab('profile')">Profile</button>
 </div>
 
+<!-- Home Tab -->
 <div id="home" class="tab">
   <h2>Analytics</h2>
   <canvas id="equityChart"></canvas>
@@ -24,6 +26,7 @@
   <canvas id="winLossChart"></canvas>
 </div>
 
+<!-- Add Trades Tab -->
 <div id="add" class="tab">
   <h2>Add Trade</h2>
   <form id="trade-form">
@@ -37,9 +40,9 @@
       <option>CALL</option>
       <option>PUT</option>
     </select>
-    <input id="entryPrice" placeholder="Entry price" required>
-    <input id="exitPrice" placeholder="Exit price" required>
-    <input id="quantity" placeholder="Quantity" required>
+    <input type="number" id="entryPrice" placeholder="Entry Price" required>
+    <input type="number" id="exitPrice" placeholder="Exit Price" required>
+    <input type="number" id="quantity" placeholder="Quantity" required>
     <select id="strategy">
       <option>Breakout</option>
       <option>Support Resistance</option>
@@ -51,27 +54,33 @@
   </form>
 </div>
 
+<!-- Stored Trades Tab -->
 <div id="trades" class="tab">
   <h2>Stored Trades</h2>
   <table id="tradesTable">
     <thead>
       <tr>
-        <th>Date</th><th>Instrument</th><th>Option</th><th>Entry</th>
-        <th>Exit</th><th>Qty</th><th>PnL</th><th>Edit</th><th>Delete</th>
+        <th>Date</th>
+        <th>Instrument</th>
+        <th>Option</th>
+        <th>Entry</th>
+        <th>Exit</th>
+        <th>Qty</th>
+        <th>PnL</th>
+        <th>Edit</th>
+        <th>Delete</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
+<!-- Profile Tab -->
 <div id="profile" class="tab">
   <h2>Profile</h2>
   <p>Email: <span id="userEmail"></span></p>
   <button onclick="logout()">Logout</button>
 </div>
-
-<script type="module" src="firebase.js"></script>
-<script type="module" src="app.js"></script>
 
 </body>
 </html>
