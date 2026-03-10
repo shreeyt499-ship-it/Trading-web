@@ -18,20 +18,32 @@ let equityChart, monthlyChart, callPutChart, strategyChart, winLossChart;
 
 // Auth state
 auth.onAuthStateChanged(async user => {
-    if (!user) return window.location = "index.html";
+    if (!user) {
+        if (window.location.pathname.includes("dashboard")) {
+            window.location = "index.html";
+        }
+        return;
+    }
     uid = user.uid;
-    document.getElementById("userEmail").innerText = user.email;
+    const emailEl = document.getElementById("userEmail");
+    if (emailEl) emailEl.innerText = user.email;
 
-    await migrateLocalTrades();
-    await loadTrades();
+    try {
+        await loadTrades();
+        await migrateLocalTrades();
+    } catch (error) {
+        console.error("Auth state error:", error);
+        alert("Error loading data. Please refresh.");
+    }
 });
 
 // Tabs
 function showTab(tab) {
     document.querySelectorAll(".tab").forEach(t => t.style.display = "none");
-    document.getElementById(tab).style.display = "block";
+    const target = document.getElementById(tab);
+    if (target) target.style.display = "block";
 }
-window.showTab = showTab; // Make globally accessible
+window.showTab = showTab;
 
 // Save Trade
 tradeForm.addEventListener("submit", async e => {
@@ -50,30 +62,41 @@ tradeForm.addEventListener("submit", async e => {
 
     trade.pnl = (trade.exit - trade.entry) * trade.qty;
 
-    if (editId) {
-        await updateDoc(doc(db, "users", uid, "trades", editId), trade);
-        editId = null;
-    } else {
-        await addDoc(collection(db, "users", uid, "trades"), trade);
-    }
+    try {
+        if (editId) {
+            await updateDoc(doc(db, "users", uid, "trades", editId), trade);
+            editId = null;
+        } else {
+            await addDoc(collection(db, "users", uid, "trades"), trade);
+        }
 
-    tradeForm.reset();
-    await loadTrades();
-    showTab("home");
+        tradeForm.reset();
+        await loadTrades();
+        showTab("home");
+    } catch (error) {
+        console.error("Save error:", error);
+        alert("Failed to save trade. Please try again.");
+    }
 });
 
 // Load Trades
 async function loadTrades() {
-    const snapshot = await getDocs(collection(db, "users", uid, "trades"));
-    trades = [];
-    snapshot.forEach(docSnap => trades.push({ id: docSnap.id, ...docSnap.data() }));
+    if (!uid) return;
+    try {
+        const snapshot = await getDocs(collection(db, "users", uid, "trades"));
+        trades = [];
+        snapshot.forEach(docSnap => trades.push({ id: docSnap.id, ...docSnap.data() }));
 
-    renderTradesTable();
-    renderCharts();
+        renderTradesTable();
+        renderCharts();
+    } catch (error) {
+        console.error("Load trades error:", error);
+    }
 }
 
 // Render Trades Table
 function renderTradesTable() {
+    if (!tradesTableBody) return;
     tradesTableBody.innerHTML = "";
     trades.forEach(t => {
         const row = document.createElement("tr");
@@ -84,16 +107,19 @@ function renderTradesTable() {
             <td>${t.entry}</td>
             <td>${t.exit}</td>
             <td>${t.qty}</td>
-            <td>${t.pnl.toFixed(2)}</td>
+            <td style="color: ${t.pnl >= 0 ? 'green' : 'red'}">${t.pnl.toFixed(2)}</td>
             <td><button onclick="editTrade('${t.id}')">Edit</button></td>
             <td><button onclick="deleteTrade('${t.id}')">X</button></td>
         `;
         tradesTableBody.appendChild(row);
     });
 }
-window.editTrade = editTrade; // global
+window.editTrade = editTrade;
+
 async function editTrade(id) {
     const t = trades.find(x => x.id === id);
+    if (!t) return;
+
     document.getElementById("date").value = t.date;
     document.getElementById("instrument").value = t.instrument;
     document.getElementById("optionType").value = t.optionType;
@@ -107,24 +133,40 @@ async function editTrade(id) {
 
 // Delete Trade
 window.deleteTrade = async function(id) {
-    await deleteDoc(doc(db, "users", uid, "trades", id));
-    await loadTrades();
+    if (!confirm("Are you sure you want to delete this trade?")) return;
+    try {
+        await deleteDoc(doc(db, "users", uid, "trades", id));
+        await loadTrades();
+    } catch (error) {
+        console.error("Delete error:", error);
+        alert("Failed to delete trade.");
+    }
 };
 
 // Logout
 window.logout = function() {
-    auth.signOut();
+    auth.signOut().then(() => {
+        window.location = "index.html";
+    }).catch(error => {
+        console.error("Logout error:", error);
+    });
 };
 
 // Migrate localStorage trades
 async function migrateLocalTrades() {
+    if (!uid) return;
     const localTrades = JSON.parse(localStorage.getItem("trades") || "[]");
     if (localTrades.length > 0 && !localStorage.getItem("migrated")) {
-        for (const t of localTrades) {
-            t.pnl = (t.exitPrice - t.entryPrice) * t.quantity;
-            await addDoc(collection(db, "users", uid, "trades"), t);
+        try {
+            for (const t of localTrades) {
+                t.pnl = (t.exitPrice - t.entryPrice) * t.quantity;
+                await addDoc(collection(db, "users", uid, "trades"), t);
+            }
+            localStorage.setItem("migrated", "true");
+            localStorage.removeItem("trades");
+        } catch (error) {
+            console.error("Migration error:", error);
         }
-        localStorage.setItem("migrated", "true");
     }
 }
 
@@ -153,29 +195,34 @@ function renderCharts() {
     equityChart = new Chart(equityChartEl, {
         type: "line",
         data: { labels: trades.map(t => t.date), datasets: [{ data: cumulative, label: "Equity", borderColor: "lime", fill: false }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     if (monthlyChart) monthlyChart.destroy();
     monthlyChart = new Chart(monthlyChartEl, {
         type: "bar",
         data: { labels: Object.keys(monthly), datasets: [{ data: Object.values(monthly), label: "Monthly PnL", backgroundColor: "cyan" }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     if (callPutChart) callPutChart.destroy();
     callPutChart = new Chart(callPutChartEl, {
         type: "pie",
         data: { labels: ["CALL", "PUT"], datasets: [{ data: [call, put], backgroundColor: ["green", "red"] }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     if (strategyChart) strategyChart.destroy();
     strategyChart = new Chart(strategyChartEl, {
         type: "pie",
         data: { labels: Object.keys(strategyCount), datasets: [{ data: Object.values(strategyCount), backgroundColor: ["#38bdf8", "#facc15", "#f472b6", "#10b981", "#8b5cf6"] }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     if (winLossChart) winLossChart.destroy();
     winLossChart = new Chart(winLossChartEl, {
         type: "pie",
         data: { labels: ["Wins", "Losses"], datasets: [{ data: [wins, losses], backgroundColor: ["green", "red"] }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
