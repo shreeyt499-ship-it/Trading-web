@@ -44,6 +44,10 @@ function showTab(tab) {
     const target = document.getElementById(tab);
     if (target) target.style.display = "block";
 }
+// Initialize first tab on page load
+document.addEventListener("DOMContentLoaded", () => {
+    showTab("home");
+});
 window.showTab = showTab;
 
 // Save Trade
