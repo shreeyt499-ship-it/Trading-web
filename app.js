@@ -1,34 +1,29 @@
-import { auth, db } from "./firebase.js";
-
-// Tabs
-window.showTab = function(tab){
-    document.querySelectorAll(".tab").forEach(t => t.style.display = "none");
-    document.getElementById(tab).style.display = "block";
-};
-
-// Variables
+// Global
 let uid;
 let trades = [];
 let editId = null;
 
-// Elements
-const tradeForm = document.getElementById("trade-form");
-const tradesTableBody = document.querySelector("#tradesTable tbody");
-
 // Auth check
-auth.onAuthStateChanged(user => {
-    if (user) {
+auth.onAuthStateChanged(async user => {
+    if(user){
         uid = user.uid;
         document.getElementById("userEmail").innerText = user.email;
 
-        migrateLocalTrades().then(() => loadTrades());
-        showTab("home");
+        await migrateLocalTrades(); // migrate old localStorage trades once
+        await loadTrades();         // load all trades from Firestore
     } else {
         window.location = "index.html";
     }
 });
 
-// Add/Edit Trade
+// Show tab function
+function showTab(tab){
+    document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
+    document.getElementById(tab).style.display="block";
+}
+
+// Add/Edit trade
+const tradeForm = document.getElementById("trade-form");
 tradeForm.addEventListener("submit", async e => {
     e.preventDefault();
 
@@ -45,31 +40,38 @@ tradeForm.addEventListener("submit", async e => {
               parseInt(document.getElementById("quantity").value)
     };
 
-    if(editId){
-        await db.collection("users").doc(uid).collection("trades").doc(editId).update(trade);
-        editId = null;
-    } else {
-        await db.collection("users").doc(uid).collection("trades").add(trade);
-    }
+    try {
+        if(editId){
+            await db.collection("users").doc(uid).collection("trades").doc(editId).update(trade);
+            editId = null;
+        } else {
+            await db.collection("users").doc(uid).collection("trades").add(trade);
+        }
 
-    tradeForm.reset();
-    showTab("trades");
-    loadTrades();
+        tradeForm.reset();
+        await loadTrades();
+        showTab("trades");
+    } catch(err){
+        console.error(err);
+        alert("Error saving trade: " + err.message);
+    }
 });
 
 // Load trades from Firestore
 async function loadTrades(){
     const snapshot = await db.collection("users").doc(uid).collection("trades").get();
     trades = [];
-    snapshot.forEach(doc => trades.push({ id: doc.id, ...doc.data() }));
+    snapshot.forEach(doc => trades.push({id: doc.id, ...doc.data()}));
 
     renderTrades();
     renderCharts();
 }
 
-// Render trade table
+// Render trades table
 function renderTrades(){
-    tradesTableBody.innerHTML = "";
+    const tbody = document.querySelector("#tradesTable tbody");
+    tbody.innerHTML = "";
+
     trades.forEach(t => {
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -83,12 +85,12 @@ function renderTrades(){
             <td><button onclick="editTrade('${t.id}')">Edit</button></td>
             <td><button onclick="deleteTrade('${t.id}')">X</button></td>
         `;
-        tradesTableBody.appendChild(row);
+        tbody.appendChild(row);
     });
 }
 
 // Edit trade
-window.editTrade = function(id){
+function editTrade(id){
     const t = trades.find(x => x.id === id);
     document.getElementById("date").value = t.date;
     document.getElementById("instrument").value = t.instrument;
@@ -103,17 +105,17 @@ window.editTrade = function(id){
 }
 
 // Delete trade
-window.deleteTrade = async function(id){
+async function deleteTrade(id){
     await db.collection("users").doc(uid).collection("trades").doc(id).delete();
-    loadTrades();
+    await loadTrades();
 }
 
 // Logout
-window.logout = function(){
+function logout(){
     auth.signOut();
 }
 
-// Migrate localStorage trades once
+// Migrate old localStorage trades to Firestore
 async function migrateLocalTrades(){
     const localTrades = JSON.parse(localStorage.getItem("trades") || "[]");
     if(localTrades.length > 0 && !localStorage.getItem("migrated")){
@@ -124,12 +126,10 @@ async function migrateLocalTrades(){
     }
 }
 
-// Render charts
+// Render Charts
 function renderCharts(){
-    if(trades.length === 0) return;
-
-    let cumulative = [], sum = 0;
-    let monthly = {}, call=0, put=0, strategy={}, wins=0, losses=0;
+    let cumulative=[], sum=0;
+    let monthly={}, call=0, put=0, strategy={}, wins=0, losses=0;
 
     trades.forEach(t=>{
         sum += t.pnl;
@@ -138,15 +138,24 @@ function renderCharts(){
         const month = t.date.slice(0,7);
         monthly[month] = (monthly[month] || 0) + t.pnl;
 
-        t.optionType === "CALL" ? call++ : put++;
+        if(t.optionType === "CALL") call++;
+        else put++;
+
         strategy[t.strategy] = (strategy[t.strategy] || 0) + 1;
 
-        t.pnl > 0 ? wins++ : losses++;
+        if(t.pnl > 0) wins++;
+        else losses++;
     });
 
-    new Chart(document.getElementById("equityChart"), { type:"line", data:{ labels: trades.map(t=>t.date), datasets:[{ data: cumulative, label:"Equity" }] } });
-    new Chart(document.getElementById("monthlyChart"), { type:"bar", data:{ labels: Object.keys(monthly), datasets:[{ data: Object.values(monthly), label:"Monthly PnL" }] } });
-    new Chart(document.getElementById("callPutChart"), { type:"pie", data:{ labels:["CALL","PUT"], datasets:[{ data:[call,put] }] } });
-    new Chart(document.getElementById("strategyChart"), { type:"pie", data:{ labels:Object.keys(strategy), datasets:[{ data:Object.values(strategy) }] } });
-    new Chart(document.getElementById("winLossChart"), { type:"pie", data:{ labels:["Wins","Losses"], datasets:[{ data:[wins,losses] }] } });
+    // Charts
+    new Chart(document.getElementById("equityChart"), {type:"line", data:{labels: trades.map(t=>t.date), datasets:[{data:cumulative,label:"Equity"}]}});
+
+    new Chart(document.getElementById("monthlyChart"), {type:"bar", data:{labels: Object.keys(monthly), datasets:[{data: Object.values(monthly), label:"Monthly PnL"}]}});
+
+    new Chart(document.getElementById("callPutChart"), {type:"pie", data:{labels:["CALL","PUT"], datasets:[{data:[call,put]}]}});
+
+    new Chart(document.getElementById("strategyChart"), {type:"pie", data:{labels: Object.keys(strategy), datasets:[{data:Object.values(strategy)}]}});
+
+    new Chart(document.getElementById("winLossChart"), {type:"pie", data:{labels:["Wins","Losses"], datasets:[{data:[wins, losses]}]}});
+
 }
