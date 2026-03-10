@@ -1,34 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Trading Journal - Login</title>
+  <title>Trading Journal</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="login-page">
+<body>
 
-<div class="login-container">
-  <div class="login-left">
-    <h1>📈 Trading Journal</h1>
-    <canvas id="loginChart"></canvas>
-  </div>
+<h1>📈 Trading Journal</h1>
 
-  <div class="login-right">
-    <h2>Login / Signup</h2>
-    <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <br>
-    <button onclick="signup()">Signup</button>
-    <hr>
-    <button onclick="loginWithGoogle()">Login with Google</button>
+<div class="tabs">
+  <button onclick="showTab('home')">Home</button>
+  <button onclick="showTab('add')">Add Trades</button>
+  <button onclick="showTab('trades')">Stored Trades</button>
+  <button onclick="showTab('profile')">Profile</button>
+</div>
+
+<!-- Home -->
+<div id="home" class="tab">
+  <h2>Analytics</h2>
+  <div class="charts-grid">
+    <div class="chart-container"><canvas id="equityChart"></canvas></div>
+    <div class="chart-container"><canvas id="monthlyChart"></canvas></div>
+    <div class="chart-container"><canvas id="callPutChart"></canvas></div>
+    <div class="chart-container"><canvas id="strategyChart"></canvas></div>
+    <div class="chart-container"><canvas id="winLossChart"></canvas></div>
   </div>
 </div>
 
-<script type="module" src="firebase.js"></script>
-<script type="module" src="auth.js"></script>
-<script type="module" src="loginChart.js"></script>
+<!-- Add Trades -->
+<div id="add" class="tab">
+  <h2>Add Trade</h2>
+  <form id="trade-form">
+    <input type="date" id="date" required>
+    <select id="instrument">
+      <option>NIFTY</option>
+      <option>BANKNIFTY</option>
+      <option>STOCKS</option>
+    </select>
+    <select id="optionType">
+      <option>CALL</option>
+      <option>PUT</option>
+    </select>
+    <input type="number" id="entryPrice" placeholder="Entry Price" required>
+    <input type="number" id="exitPrice" placeholder="Exit Price" required>
+    <input type="number" id="quantity" placeholder="Quantity" required>
+   <select id="strategy">
+      <option>Breakout</option>
+      <option>Support Resistance</option>
+      <option>Option Buy</option>
+      <option>Option Sell</option>
+      <option>Scalping</option>
+    </select>
+    <button type="submit">Save Trade</button>
+  </form>
+</div>
 
+<!-- Stored Trades -->
+<div id="trades" class="tab">
+  <h2>Stored Trades</h2>
+  <table id="tradesTable">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Instrument</th>
+        <th>Option</th>
+        <th>Entry</th>
+        <th>Exit</th>
+        <th>Qty</th>
+        <th>PnL</th>
+        <th>Edit</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Profile -->
+<div id="profile" class="tab">
+  <h2>Profile</h2>
+  <p>Local Journal (no login required)</p>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
