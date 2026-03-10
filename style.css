@@ -1,15 +1,15 @@
-
 body {
   font-family: Arial, sans-serif;
   background: #0f172a;
   color: white;
   margin: 0;
+  padding: 0;
 }
 
 button {
   background: #38bdf8;
   border: none;
-  padding: 10px;
+  padding: 10px 15px;
   cursor: pointer;
   color: #0f172a;
   font-weight: bold;
@@ -28,6 +28,8 @@ input, select {
   border-radius: 6px;
   border: none;
   width: 80%;
+  background: #1e293b;
+  color: white;
 }
 
 .tabs {
@@ -35,17 +37,25 @@ input, select {
   gap: 10px;
   background: #1e293b;
   padding: 15px;
+  flex-wrap: wrap;
 }
 
 .tab {
   display: none;
   padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
+  background: #1e293b;
 }
 
 td, th {
@@ -75,4 +85,15 @@ canvas {
   width: 100% !important;
   height: 100% !important;
   display: block;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-container {
+    height: 250px;
+  }
 }
