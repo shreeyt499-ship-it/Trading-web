@@ -1,15 +1,19 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
 const firebaseConfig = {
-
-apiKey: "YOUR_API_KEY",
-authDomain: "YOUR_PROJECT.firebaseapp.com",
-projectId: "YOUR_PROJECT_ID",
-storageBucket: "YOUR_PROJECT.appspot.com",
-messagingSenderId: "XXXX",
-appId: "XXXX"
-
+  apiKey: "AIzaSyAQkrYNZ4uR_FIFV0zE7ioEetu7xb5bGlc" ,
+  authDomain: "trading-journal-1ea0f.firebaseapp.com",
+  projectId: "trading-journal-1ea0f",
+  storageBucket: "trading-journal-1ea0f.firebasestorage.app",
+  messagingSenderId: "519108528223",
+  appId: "1:519108528223:web:259b83ec90548a2848b3ea"
 };
 
-firebase.initializeApp(firebaseConfig)
+const app = initializeApp(firebaseConfig);
 
-const auth = firebase.auth()
-const db = firebase.firestore()
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+export { auth, db };
