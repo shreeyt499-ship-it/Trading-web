@@ -1,5 +1,6 @@
 import { auth, db } from "./firebase.js";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import Chart from "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm";
 
 // Elements
 const tradeForm = document.getElementById("trade-form");
@@ -170,10 +171,18 @@ async function migrateLocalTrades() {
     }
 }
 
-// Render Charts
+// Render Charts - FIXED VERSION
 function renderCharts() {
     if (!trades.length) return;
 
+    // Clear all existing charts first
+    [equityChart, monthlyChart, callPutChart, strategyChart, winLossChart].forEach(chart => {
+        if (chart) {
+            chart.destroy();
+        }
+    });
+
+    // Calculate chart data
     let cumulative = [], sum = 0;
     let monthly = {}, call = 0, put = 0, strategyCount = {}, wins = 0, losses = 0;
 
@@ -191,38 +200,49 @@ function renderCharts() {
         if (t.pnl > 0) wins++; else losses++;
     });
 
-    if (equityChart) equityChart.destroy();
-    equityChart = new Chart(equityChartEl, {
-        type: "line",
-        data: { labels: trades.map(t => t.date), datasets: [{ data: cumulative, label: "Equity", borderColor: "lime", fill: false }] },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    // Create charts with error handling
+    const createChart = (canvasEl, type, data, options) => {
+        try {
+            if (!canvasEl) return null;
+            
+            return new Chart(canvasEl, {
+                type,
+                data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true } },
+                    ...options
+                }
+            });
+        } catch (error) {
+            console.error("Chart creation error:", error);
+            return null;
+        }
+    };
 
-    if (monthlyChart) monthlyChart.destroy();
-    monthlyChart = new Chart(monthlyChartEl, {
-        type: "bar",
-        data: { labels: Object.keys(monthly), datasets: [{ data: Object.values(monthly), label: "Monthly PnL", backgroundColor: "cyan" }] },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    equityChart = createChart(equityChartEl, "line", {
+        labels: trades.map(t => t.date),
+        datasets: [{ data: cumulative, label: "Equity", borderColor: "lime", fill: false }]
+    }, { plugins: { legend: { display: false } } });
 
-    if (callPutChart) callPutChart.destroy();
-    callPutChart = new Chart(callPutChartEl, {
-        type: "pie",
-        data: { labels: ["CALL", "PUT"], datasets: [{ data: [call, put], backgroundColor: ["green", "red"] }] },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    monthlyChart = createChart(monthlyChartEl, "bar", {
+        labels: Object.keys(monthly),
+        datasets: [{ data: Object.values(monthly), label: "Monthly PnL", backgroundColor: "cyan" }]
+    }, { plugins: { legend: { display: false } } });
 
-    if (strategyChart) strategyChart.destroy();
-    strategyChart = new Chart(strategyChartEl, {
-        type: "pie",
-        data: { labels: Object.keys(strategyCount), datasets: [{ data: Object.values(strategyCount), backgroundColor: ["#38bdf8", "#facc15", "#f472b6", "#10b981", "#8b5cf6"] }] },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    callPutChart = createChart(callPutChartEl, "pie", {
+        labels: ["CALL", "PUT"],
+        datasets: [{ data: [call, put], backgroundColor: ["green", "red"] }]
+    }, { plugins: { legend: { display: true } } });
 
-    if (winLossChart) winLossChart.destroy();
-    winLossChart = new Chart(winLossChartEl, {
-        type: "pie",
-        data: { labels: ["Wins", "Losses"], datasets: [{ data: [wins, losses], backgroundColor: ["green", "red"] }] },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
+    strategyChart = createChart(strategyChartEl, "pie", {
+        labels: Object.keys(strategyCount),
+        datasets: [{ data: Object.values(strategyCount), backgroundColor: ["#38bdf8", "#facc15", "#f472b6", "#10b981", "#8b5cf6"] }]
+    }, { plugins: { legend: { display: true } } });
+
+    winLossChart = createChart(winLossChartEl, "pie", {
+        labels: ["Wins", "Losses"],
+        datasets: [{ data: [wins, losses], backgroundColor: ["green", "red"] }]
+    }, { plugins: { legend: { display: true } } });
 }
